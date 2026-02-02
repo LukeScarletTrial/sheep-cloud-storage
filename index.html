@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cloud OS - High Sierra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/webdav@5.3.1/dist/index.umd.min.js"></script>
+    <style>
+        body { 
+            background: #000; height: 100vh; overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        #desktop {
+            background: url('https://4kwallpapers.com/images/walls/thumbs_3t/4037.jpg') no-repeat center center fixed;
+            background-size: cover; height: 100vh; display: none;
+        }
+        .liquid-glass {
+            background: rgba(10, 10, 10, 0.45);
+            backdrop-filter: blur(60px) saturate(210%);
+            -webkit-backdrop-filter: blur(60px) saturate(210%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .icon-bubble {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 22px;
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .icon-bubble:hover { transform: scale(1.1) translateY(-5px); background: rgba(255, 255, 255, 0.15); }
+
+        /* BOOT SCREEN */
+        #boot-loader {
+            position: fixed; inset: 0; background: #000; z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .apple-logo { width: 70px; filter: invert(1); margin-bottom: 50px; opacity: 0.9; }
+        .boot-bar-bg { width: 180px; height: 3px; background: #333; border-radius: 10px; overflow: hidden; }
+        #boot-bar-fill { width: 0%; height: 100%; background: #fff; transition: width 0.3s ease; }
+        #boot-status { color: #666; font-size: 9px; margin-top: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; }
+        
+        #error-screen { display: none; text-align: center; padding: 20px; }
+        .error-icon { color: #ff5f57; margin-bottom: 20px; }
+        
+        #grid::-webkit-scrollbar { width: 0; }
+    </style>
+</head>
+<body>
+
+    <div id="boot-loader">
+        <svg class="apple-logo" viewBox="0 0 170 170" xmlns="http://www.w3.org/2000/svg">
+            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.35-3.17-4.58 0-9.49 1.05-14.7 3.17-5.22 2.13-9.41 3.24-12.58 3.35-5.52.19-10.51-2.09-14.97-6.85-3.26-3.35-7.04-8.83-11.36-16.41-4.32-7.59-7.53-15.93-9.64-25.01-2.1-9.08-3.15-17.84-3.15-26.27 0-12.18 2.36-22.38 7.08-30.61 4.71-8.24 11.24-13.3 19.58-15.18 4.23-.97 9.12-1.46 14.65-1.46 3.93 0 9.04 1.12 15.34 3.35 6.29 2.23 10.43 3.35 12.4 3.35 1.48 0 5.86-1.21 13.14-3.63 7.28-2.42 12.83-3.41 16.64-2.98 12.38 1.48 21.84 7.02 28.38 16.64-9.11 5.6-13.67 13.51-13.67 23.73 0 8.08 2.75 14.83 8.24 20.25 5.48 5.42 12.08 8.65 19.78 9.68-.44 2.23-1.08 4.63-1.92 7.18zM102.7 32.89c.28-9.01-3.15-17.21-10.3-24.59 7.47-.84 14.85 2.15 20.08 8.24 5.23 6.1 7.91 13.6 7.24 21.67-8.24.56-15.42-3.17-20.08-8.24-.93-1.02-1.78-2.09-2.54-3.21z"/>
+        </svg>
+        <div id="boot-ui">
+            <div class="boot-bar-bg"><div id="boot-bar-fill"></div></div>
+            <p id="boot-status">Initializing Hardware...</p>
+        </div>
+        <div id="error-screen">
+            <i data-lucide="alert-circle" class="error-icon w-10 h-10 mx-auto"></i>
+            <p class="text-white text-[10px] font-black uppercase tracking-[0.2em] mb-2" id="error-title">Security Block</p>
+            <p class="text-white/40 text-[9px] max-w-xs mx-auto mb-8" id="error-desc">Local files cannot access cloud servers. Please upload this file to a host like Tiiny.host.</p>
+            <button onclick="location.reload()" class="px-8 py-2 border border-white/20 rounded-full text-[9px] text-white uppercase hover:bg-white/10 transition">Try Again</button>
+        </div>
+    </div>
+
+    <div id="desktop" class="flex flex-col items-center pt-12">
+        <div class="liquid-glass w-[94%] max-w-6xl h-[80vh] rounded-[35px] flex overflow-hidden shadow-2xl border border-white/10">
+            <aside class="w-60 bg-black/40 border-r border-white/5 p-8 hidden md:flex flex-col shrink-0">
+                <div class="flex gap-2 mb-12">
+                    <div class="w-3 h-3 rounded-full bg-[#ff5f57] shadow-lg"></div>
+                    <div class="w-3 h-3 rounded-full bg-[#febc2e] shadow-lg"></div>
+                    <div class="w-3 h-3 rounded-full bg-[#28c840] shadow-lg"></div>
+                </div>
+                <h2 class="text-[9px] font-black text-white/20 tracking-[0.3em] mb-4 uppercase italic">Koofr Link</h2>
+                <div class="text-green-500 text-[9px] font-black uppercase tracking-tighter">● Online</div>
+            </aside>
+            <main class="flex-1 flex flex-col overflow-hidden">
+                <div id="grid" class="p-10 grid grid-cols-3 md:grid-cols-6 gap-10 overflow-y-auto flex-1 content-start"></div>
+                <footer class="h-20 flex items-center px-12 border-t border-white/5 justify-between bg-black/20">
+                    <span class="text-white font-black italic uppercase text-xl tracking-tighter opacity-40">Personal Cloud</span>
+                    <label class="cursor-pointer bg-white text-black px-10 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition">
+                        Upload <input type="file" id="fileInput" class="hidden">
+                    </label>
+                </footer>
+            </main>
+        </div>
+
+        <div class="mt-8 liquid-glass px-10 py-4 rounded-[40px] flex gap-10 items-center border border-white/10 shadow-2xl">
+            <div onclick="sync()" class="icon-bubble w-12 h-12 flex items-center justify-center cursor-pointer text-white"><i data-lucide="refresh-cw" class="w-5 h-5"></i></div>
+            <div class="w-[1px] h-6 bg-white/10"></div>
+            <div class="icon-bubble w-12 h-12 flex items-center justify-center cursor-pointer text-orange-400"><i data-lucide="presentation" class="w-5 h-5"></i></div>
+            <div class="icon-bubble w-12 h-12 flex items-center justify-center cursor-pointer text-yellow-300"><i data-lucide="file-text" class="w-5 h-5"></i></div>
+        </div>
+    </div>
+
+    <script>
+        const K_USER = "romintdev@gmail.com";
+        const K_PASS = "Ukl26qa43mrm58gv";
+        const client = WebDAV.createClient("https://app.koofr.net/dav/Koofr", { username: K_USER, password: K_PASS });
+
+        const bar = document.getElementById('boot-bar-fill');
+        const status = document.getElementById('boot-status');
+
+        async function startBoot() {
+            try {
+                update(10, "Initializing Hardware...");
+                await new Promise(r => setTimeout(r, 600));
+
+                update(40, "Handshaking Koofr...");
+                // Attempt to fetch directory
+                const contents = await Promise.race([
+                    client.getDirectoryContents("/"),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 6000))
+                ]);
+
+                update(80, "Loading UI Components...");
+                await new Promise(r => setTimeout(r, 600));
+
+                update(100, "Starting Desktop...");
+                setTimeout(() => {
+                    document.getElementById('boot-loader').style.display = 'none';
+                    document.getElementById('desktop').style.display = 'flex';
+                    render(contents);
+                }, 400);
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('boot-ui').style.display = 'none';
+                document.getElementById('error-screen').style.display = 'block';
+                lucide.createIcons();
+            }
+        }
+
+        function update(p, m) {
+            bar.style.width = p + "%";
+            status.innerText = m;
+        }
+
+        function render(items) {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            items.forEach(item => {
+                const ext = item.filename.split('.').pop().toLowerCase();
+                const div = document.createElement('div');
+                div.className = "flex flex-col items-center gap-4 cursor-pointer active:scale-90 transition";
+                div.onclick = () => download(item.filename);
+                div.innerHTML = `
+                    <div class="icon-bubble w-20 h-20 flex items-center justify-center shadow-2xl">
+                        <i data-lucide="${getIcon(ext)}" class="w-8 h-8 text-white"></i>
+                    </div>
+                    <span class="text-white text-[10px] uppercase truncate w-24 text-center font-bold opacity-30 tracking-tighter">${item.basename}</span>
+                `;
+                grid.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        async function sync() {
+            const contents = await client.getDirectoryContents("/");
+            render(contents);
+        }
+
+        async function download(path) {
+            const data = await client.getFileContents(path);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([data]));
+            a.download = path.split('/').pop();
+            a.click();
+        }
+
+        function getIcon(ext) {
+            if(['png','jpg','jpeg','webp','gif'].includes(ext)) return 'image';
+            if(ext === 'pptx') return 'presentation';
+            return 'file';
+        }
+
+        document.getElementById('fileInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                await client.putFileContents(`/${file.name}`, reader.result);
+                sync();
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        window.onload = startBoot;
+    </script>
+</body>
+</html>
